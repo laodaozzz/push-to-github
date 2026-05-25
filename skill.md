@@ -41,7 +41,7 @@ gh auth status
 
 If not logged in, instruct the user to run `! gh auth login` and wait for confirmation.
 
-**Important**: Do NOT use the account name from `gh auth status` as the GitHub owner. The display name may differ from the actual GitHub username. The correct owner will be determined in Step 7 after creating the repo.
+**Important**: Do NOT use the account name from `gh auth status` as the GitHub owner. The display name may differ from the actual GitHub username. The correct owner will be determined in Step 8 after creating the repo.
 
 ### Step 4: Generate Bilingual README.md
 
@@ -109,7 +109,35 @@ Generate a README.md with both English and Chinese sections. Use this template s
 
 Adapt the sections (Supported Formats, Features, etc.) based on what the project actually does. Remove irrelevant sections.
 
-### Step 5: Initialize Git and Commit
+### Step 5: Scan for Sensitive Information
+
+Before committing, scan all staged files for secrets and private data. Run these checks in parallel:
+
+**Check 1: Pattern scan** — grep for common secret patterns:
+
+```bash
+grep -rniE '(api[_-]?key|api[_-]?secret|access[_-]?token|secret[_-]?key|private[_-]?key|auth[_-]?token|password|passwd|bearer\s+[a-zA-Z0-9_\-\.]+|sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|AKIA[0-9A-Z]{16})' --include='*.*' .
+```
+
+**Check 2: Sensitive files** — look for files that should not be committed:
+
+```bash
+ls -a .env .env.* *.pem *.key *.p12 *.pfx credentials.json service-account.json 2>/dev/null
+```
+
+**If secrets found:**
+1. Report each finding to the user (file path and matched pattern)
+2. Add the offending files/patterns to `.gitignore`
+3. Ask the user to confirm whether to proceed, skip those files, or abort
+4. If secrets are in tracked content (not just files), ask the user to remove them before proceeding
+
+**If .env or credential files exist but contain no real secrets (e.g., `.env.example` with placeholders):**
+- Still add them to `.gitignore` as a precaution
+- Note this to the user
+
+Only proceed to Step 6 after the user confirms the scan results are acceptable.
+
+### Step 6: Initialize Git and Commit
 
 ```bash
 git init
@@ -119,7 +147,7 @@ git commit -m "Initial commit: {brief description}"
 
 If there are files that should not be committed (e.g., `.env`, `node_modules`, large binaries), create a `.gitignore` first.
 
-### Step 6: Create Repo and Push
+### Step 7: Create Repo and Push
 
 ```bash
 gh repo create {repo-name} --{public/private} --source=. --push
@@ -132,7 +160,7 @@ git remote add origin https://github.com/{owner}/{repo}.git
 git push -u origin main
 ```
 
-### Step 7: Determine Repo Owner and Set GitHub About
+### Step 8: Determine Repo Owner and Set GitHub About
 
 After the repo is created and pushed, determine the actual owner from the git remote — do NOT use the `gh auth status` account name:
 
@@ -156,7 +184,7 @@ gh repo edit {owner}/{repo} --add-topic {topic1},{topic2}
 
 Choose topics based on the project's tech stack and purpose (e.g., `markdown`, `converter`, `python`, `document`).
 
-### Step 8: Verify and Report
+### Step 9: Verify and Report
 
 After pushing:
 1. Confirm the push succeeded
