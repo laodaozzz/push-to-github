@@ -33,7 +33,7 @@ If the user uses a different proxy port, ask them. Common v2ray ports:
 - SOCKS5: `10808`
 - HTTP: `10809`
 
-### Step 3: Check GitHub CLI Auth
+### Step 3: Check GitHub CLI Auth and Verify Username
 
 ```bash
 gh auth status
@@ -41,7 +41,27 @@ gh auth status
 
 If not logged in, instruct the user to run `! gh auth login` and wait for confirmation.
 
-**Important**: Do NOT use the account name from `gh auth status` as the GitHub owner. The display name may differ from the actual GitHub username. The correct owner will be determined in Step 8 after creating the repo.
+Then get the **actual GitHub username** from the API (the keyring label may have typos):
+
+```bash
+gh api user --jq '.login'
+```
+
+Store this as `{owner}` — it is the source of truth for all subsequent steps.
+
+Also verify the git global config matches:
+
+```bash
+git config --global user.name
+git config --global user.email
+```
+
+If they are placeholders or don't match, update them:
+
+```bash
+git config --global user.name "{owner}"
+git config --global user.email "{owner}@users.noreply.github.com"
+```
 
 ### Step 4: Generate Bilingual README.md
 
@@ -149,28 +169,24 @@ If there are files that should not be committed (e.g., `.env`, `node_modules`, l
 
 ### Step 7: Create Repo and Push
 
+Use the `{owner}` from Step 3:
+
 ```bash
 gh repo create {repo-name} --{public/private} --source=. --push
 ```
 
-If the repo already exists on GitHub:
+If the repo already exists on GitHub, use the verified `{owner}` from Step 3:
 
 ```bash
 git remote add origin https://github.com/{owner}/{repo}.git
 git push -u origin main
 ```
 
-### Step 8: Determine Repo Owner and Set GitHub About
+**Never construct URLs from `gh auth status` output** — always use the `{owner}` obtained from `gh api user`.
 
-After the repo is created and pushed, determine the actual owner from the git remote — do NOT use the `gh auth status` account name:
+### Step 8: Set GitHub About
 
-```bash
-git remote -v
-```
-
-Parse the owner from the remote URL (e.g., `https://github.com/{owner}/{repo}.git`).
-
-Then set the bilingual About description:
+Use the `{owner}` verified in Step 3 to set the bilingual About description:
 
 ```bash
 gh repo edit {owner}/{repo} --description "{English description} | {Chinese description}"
